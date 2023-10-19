@@ -217,7 +217,7 @@
 					};
 				};
 			};
-			buildConfigurationList = B8C6FA0F2ADB6C9600E7DE47 /* Build configuration list for PBXProject "NSPhotoLibraryUsageDesciption" */;
+			buildConfigurationList = B8C6FA0F2ADB6C9600E7DE47 /* Build configuration list for PBXProject "AMZ 360view" */;
 			compatibilityVersion = "Xcode 11.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -560,7 +560,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B8C6FA0F2ADB6C9600E7DE47 /* Build configuration list for PBXProject "NSPhotoLibraryUsageDesciption" */ = {
+		B8C6FA0F2ADB6C9600E7DE47 /* Build configuration list for PBXProject "AMZ 360view" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B8C6FA412ADB6C9B00E7DE47 /* Debug */,

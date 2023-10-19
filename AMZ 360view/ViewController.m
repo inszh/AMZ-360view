@@ -11,7 +11,7 @@
 #import <Photos/Photos.h>
 
 
-@interface ViewController ()<AVCapturePhotoCaptureDelegate,UITextFieldDelegate>
+@interface ViewController ()<AVCapturePhotoCaptureDelegate,UITextFieldDelegate,UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) AVCaptureSession *captureSession;
 @property (nonatomic, strong) AVCaptureDevice *captureDevice;
@@ -22,6 +22,12 @@
 @property (nonatomic, strong) UIProgressView *progressView;
 @property (nonatomic, strong) UIButton *startButton;
 @property (nonatomic, strong) NSString *filenameText;
+@property (nonatomic, strong) UIPinchGestureRecognizer *pinchGesture;
+@property (nonatomic) CGFloat currentZoomFactor;
+@property (nonatomic, strong) UILabel *zoomLabel;
+@property (nonatomic, strong) UIButton *zoomInButton;
+@property (nonatomic, strong) UIButton *zoomOutButton;
+
 
 @end
 
@@ -42,11 +48,13 @@
     
     self.captureSession = [[AVCaptureSession alloc] init];
     self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
-
     
-    AVCaptureDevice *backCamera = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    
+    // 初始化摄像头设备
+     self.captureDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+
     NSError *error = nil;
-    AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:backCamera error:&error];
+    AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:self.captureDevice error:&error];
     
     if (input) {
         if ([self.captureSession canAddInput:input]) {
@@ -71,27 +79,130 @@
         NSLog(@"无法访问摄像头：%@", error.localizedDescription);
     }
     
-    
+    UITextField *filenameTextField = [[UITextField alloc] init];
+    filenameTextField.borderStyle = UITextBorderStyleRoundedRect;
+    filenameTextField.placeholder = @"请输入ASIN";
+    filenameTextField.translatesAutoresizingMaskIntoConstraints = NO; // 确保关闭自动布局
+    [self.view addSubview:filenameTextField];
+    filenameTextField.delegate = self;
 
+
+    // 创建水平居中的约束
+    NSLayoutConstraint *centerXConstraint = [NSLayoutConstraint constraintWithItem:filenameTextField
+                                                                      attribute:NSLayoutAttributeCenterX
+                                                                      relatedBy:NSLayoutRelationEqual
+                                                                         toItem:self.view
+                                                                      attribute:NSLayoutAttributeCenterX
+                                                                     multiplier:1.0
+                                                                       constant:0.0];
+
+    // 创建Y值为10的约束
+    NSLayoutConstraint *topConstraint = [NSLayoutConstraint constraintWithItem:filenameTextField
+                                                                   attribute:NSLayoutAttributeTop
+                                                                   relatedBy:NSLayoutRelationEqual
+                                                                      toItem:self.view
+                                                                   attribute:NSLayoutAttributeTop
+                                                                  multiplier:1.0
+                                                                    constant:44];
+    
+  // 创建宽度为屏幕一半的约束
+    NSLayoutConstraint *widthConstraint = [NSLayoutConstraint constraintWithItem:filenameTextField
+                                                                     attribute:NSLayoutAttributeWidth
+                                                                     relatedBy:NSLayoutRelationEqual
+                                                                        toItem:self.view
+                                                                     attribute:NSLayoutAttributeWidth
+                                                                    multiplier:0.8
+                                                                      constant:0.0];
+    // 添加约束到视图
+    [self.view addConstraint:centerXConstraint];
+    [self.view addConstraint:topConstraint];
+    [self.view addConstraint:widthConstraint];
+    
+    
      //创建进度条
     self.progressView = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
-    self.progressView.frame = CGRectMake(50, CGRectGetMaxY(self.previewLayer.frame)+5, self.view.frame.size.width - 100, 30);
+    self.progressView.frame = CGRectMake(50, CGRectGetMaxY(self.previewLayer.frame)+ 5, self.view.frame.size.width * 0.75, 30);
+    self.progressView.center = CGPointMake(self.view.center.x, CGRectGetMaxY(self.previewLayer.frame));
+
     self.progressView.progress = 0.0;
     [self.view addSubview:self.progressView];
-
+    
     // 创建开始按钮
     self.startButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.startButton.frame = CGRectMake(0, 0, 100, 50);
-    self.startButton.center = CGPointMake(self.view.center.x, CGRectGetMaxY(self.progressView.frame) + 50);
+    self.startButton.center = CGPointMake(self.view.center.x, CGRectGetMaxY(self.progressView.frame) + 35);
     [self.startButton setTitle:@"开始" forState:UIControlStateNormal];
     [self.startButton addTarget:self action:@selector(startTakingPhotos) forControlEvents:UIControlEventTouchUpInside];
+    // 设置背景颜色为蓝色
+    UIColor *customBlueColor = [UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0];
+    // 设置按钮圆角为2
+    self.startButton.layer.cornerRadius = 2.0;
+
+    [self.startButton setBackgroundColor:customBlueColor];
+
+    // 设置字体颜色为白色
+    [self.startButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [self.view addSubview:self.startButton];
     
-    UITextField *filenameTextField = [[UITextField alloc] initWithFrame:CGRectMake(20, 100, self.view.frame.size.width - 40, 40)];
-    filenameTextField.borderStyle = UITextBorderStyleRoundedRect;
-    filenameTextField.placeholder = @"请输入ASIN";
-    filenameTextField.delegate = self;
-    [self.view addSubview:filenameTextField];
+
+
+    // 创建显示缩放级别的标签
+    self.zoomLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 60, 30)]; // 调整宽度
+    self.zoomLabel.text = @"1.0x";
+    self.zoomLabel.textAlignment = NSTextAlignmentCenter; // 设置文字居中
+    self.zoomLabel.layer.cornerRadius = 2.0;
+    self.zoomLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.3];
+    self.zoomLabel.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomLabel.frame) / 2 - 20, CGRectGetHeight(self.view.frame) / 2);
+    [self.view addSubview:self.zoomLabel];
+    
+    // 创建缩放放大按钮
+    self.zoomInButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.zoomInButton setTitle:@"放大" forState:UIControlStateNormal];
+    [self.zoomInButton addTarget:self action:@selector(zoomIn) forControlEvents:UIControlEventTouchUpInside];
+    [self.zoomInButton sizeToFit];
+    CGFloat buttonWidth = 60; // 设置为所需的宽度
+
+    // 更新 zoomInButton 的宽度
+    self.zoomInButton.frame = CGRectMake(0, 0, buttonWidth, 30);
+
+    self.zoomInButton.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomInButton.frame) / 2 - 20, CGRectGetMaxY(self.zoomLabel.frame) + 20);
+    // 设置按钮圆角为2
+    self.zoomInButton.layer.cornerRadius = 2.0;
+
+    [self.zoomInButton setBackgroundColor:customBlueColor];
+
+    // 设置字体颜色为白色
+    [self.zoomInButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [self.view addSubview:self.zoomInButton];
+    
+    // 创建缩放缩小按钮
+    self.zoomOutButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.zoomOutButton setTitle:@"缩小" forState:UIControlStateNormal];
+    [self.zoomOutButton addTarget:self action:@selector(zoomOut) forControlEvents:UIControlEventTouchUpInside];
+    [self.zoomOutButton sizeToFit];
+    
+    // 更新 zoomOutButton 的宽度
+    self.zoomOutButton.frame = CGRectMake(0, 0, buttonWidth, 30);
+    self.zoomOutButton.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomOutButton.frame) / 2 - 20, CGRectGetMaxY(self.zoomInButton.frame) + 20);
+    // 设置按钮圆角为2
+    self.zoomOutButton.layer.cornerRadius = 2.0;
+
+    [self.zoomOutButton setBackgroundColor:customBlueColor];
+
+    // 设置字体颜色为白色
+    [self.zoomOutButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [self.view addSubview:self.zoomOutButton];
+    
+    
+    // 初始化当前缩放级别
+    self.currentZoomFactor = 1.0;
+    
+    // 检查设备是否支持缩放
+    if (self.captureDevice.isRampingVideoZoom) {
+        [self.captureDevice lockForConfiguration:nil];
+        self.captureDevice.videoZoomFactor = self.currentZoomFactor;
+        [self.captureDevice unlockForConfiguration];
+    }
         
 }
 
@@ -194,6 +305,35 @@
 
 }
 
+
+#pragma mark - UIGestureRecognizerDelegate
+
+- (void)zoomIn {
+    self.currentZoomFactor += 0.1; // 增加缩放因子
+    [self updateZoom];
+}
+
+- (void)zoomOut {
+    self.currentZoomFactor -= 0.1; // 减小缩放因子
+    [self updateZoom];
+}
+
+- (void)updateZoom {
+    
+
+    // 限制缩放因子在有效范围内
+    self.currentZoomFactor = MAX(1.0, MIN(self.currentZoomFactor, self.captureDevice.activeFormat.videoMaxZoomFactor));
+    
+    [self.captureDevice lockForConfiguration:nil];
+    self.captureDevice.videoZoomFactor = self.currentZoomFactor;
+    [self.captureDevice unlockForConfiguration];
+    
+    self.zoomLabel.text = [NSString stringWithFormat:@"%.1fx", self.currentZoomFactor];
+
+}
+
+
+
 #pragma mark - AVCapturePhotoCaptureDelegate
 
 - (void)captureOutput:(AVCapturePhotoOutput *)output didFinishProcessingPhoto:(AVCapturePhoto *)photo error:(NSError *)error {
@@ -213,6 +353,12 @@
 - (void)textFieldDidEndEditing:(UITextField *)textField{
     self.filenameText = textField.text;
         
+}
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [self.view endEditing:YES];
+
 }
 
 @end
