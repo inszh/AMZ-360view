@@ -11,7 +11,7 @@
 #import <Photos/Photos.h>
 
 
-@interface ViewController ()<AVCapturePhotoCaptureDelegate,UITextFieldDelegate,UIGestureRecognizerDelegate>
+@interface ViewController ()<AVCapturePhotoCaptureDelegate,UITextFieldDelegate>
 
 @property (nonatomic, strong) AVCaptureSession *captureSession;
 @property (nonatomic, strong) AVCaptureDevice *captureDevice;
@@ -22,7 +22,6 @@
 @property (nonatomic, strong) UIProgressView *progressView;
 @property (nonatomic, strong) UIButton *startButton;
 @property (nonatomic, strong) NSString *filenameText;
-@property (nonatomic, strong) UIPinchGestureRecognizer *pinchGesture;
 @property (nonatomic) CGFloat currentZoomFactor;
 @property (nonatomic, strong) UILabel *zoomLabel;
 @property (nonatomic, strong) UIButton *zoomInButton;
@@ -354,6 +353,23 @@
     self.filenameText = textField.text;
         
 }
+
+- (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
+    // 允许的字符集（英文和数字）
+    NSCharacterSet *allowedCharacters = [[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"] invertedSet];
+    
+    // 检查新输入的字符是否在允许的字符集内
+    NSRange characterRange = [string rangeOfCharacterFromSet:allowedCharacters];
+    
+    if (characterRange.location != NSNotFound) {
+        // 输入字符不在允许的字符集内，拒绝输入
+        return NO;
+    } else {
+        // 将字母字符转为大写
+        textField.text = [textField.text stringByReplacingCharactersInRange:range withString:[string uppercaseString]];
+        return NO; // 返回NO，表示不允许textField处理输入
+    }
+} 
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
