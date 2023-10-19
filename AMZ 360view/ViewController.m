@@ -80,7 +80,7 @@
     
     UITextField *filenameTextField = [[UITextField alloc] init];
     filenameTextField.borderStyle = UITextBorderStyleRoundedRect;
-    filenameTextField.placeholder = @"请输入ASIN";
+    filenameTextField.placeholder = @"请先输入ASIN后拍摄";
     filenameTextField.translatesAutoresizingMaskIntoConstraints = NO; // 确保关闭自动布局
     [self.view addSubview:filenameTextField];
     filenameTextField.delegate = self;
