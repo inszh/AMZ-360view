@@ -49,7 +49,7 @@
     self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
     
     
-    // 初始化摄像头设备
+    // 初始化摄像头设备1
      self.captureDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
 
     NSError *error = nil;
