@@ -21,12 +21,13 @@
 @property (nonatomic, assign) NSInteger photoCount; // 用于计数已拍摄的照片数量
 @property (nonatomic, strong) UIProgressView *progressView;
 @property (nonatomic, strong) UIButton *startButton;
+@property (nonatomic, strong) UIButton *resetButton;
 @property (nonatomic, strong) NSString *filenameText;
 @property (nonatomic) CGFloat currentZoomFactor;
 @property (nonatomic, strong) UILabel *zoomLabel;
 @property (nonatomic, strong) UIButton *zoomInButton;
 @property (nonatomic, strong) UIButton *zoomOutButton;
-
+@property (nonatomic, strong) UITextField *filenameTextField;
 @end
 
 @implementation ViewController
@@ -78,8 +79,9 @@
     }
     
     UITextField *filenameTextField = [[UITextField alloc] init];
+    self.filenameTextField=filenameTextField;
     filenameTextField.borderStyle = UITextBorderStyleRoundedRect;
-    filenameTextField.placeholder = @"请先输入ASIN后拍摄";
+    filenameTextField.placeholder = @"输入B0开头的10位ASIN开始";
     filenameTextField.translatesAutoresizingMaskIntoConstraints = NO; // 确保关闭自动布局
     [self.view addSubview:filenameTextField];
     filenameTextField.delegate = self;
@@ -128,19 +130,31 @@
     // 创建开始按钮
     self.startButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.startButton.frame = CGRectMake(0, 0, 100, 50);
-    self.startButton.center = CGPointMake(self.view.center.x, CGRectGetMaxY(self.progressView.frame) + 35);
+    self.startButton.center = CGPointMake(self.view.center.x - 50 , CGRectGetMaxY(self.progressView.frame) + 35);
     [self.startButton setTitle:@"开始" forState:UIControlStateNormal];
     [self.startButton addTarget:self action:@selector(startTakingPhotos) forControlEvents:UIControlEventTouchUpInside];
-    // 设置背景颜色为蓝色
-    UIColor *customBlueColor = [UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0];
+
+    self.resetButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.resetButton.frame = CGRectMake(CGRectGetMaxX(self.startButton.frame)  + 10 , self.startButton.frame.origin.y, 100, 50);
+    [self.resetButton setTitle:@"重置" forState:UIControlStateNormal];
+    [self.resetButton addTarget:self action:@selector(startReset) forControlEvents:UIControlEventTouchUpInside];
+    
     // 设置按钮圆角为2
-    self.startButton.layer.cornerRadius = 2.0;
+    self.resetButton.layer.cornerRadius = self.startButton.layer.cornerRadius = 2.0;
 
-    [self.startButton setBackgroundColor:customBlueColor];
-
-    // 设置字体颜色为白色
+    [self.startButton setBackgroundColor:[UIColor lightGrayColor]];
+    self.startButton.enabled=NO;
+    [self.startButton setTitleColor:[UIColor grayColor] forState:UIControlStateDisabled];
     [self.startButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    
+    [self.resetButton setBackgroundColor:[UIColor lightGrayColor]];
+    self.resetButton.enabled=NO;
+    [self.resetButton setTitleColor:[UIColor grayColor] forState:UIControlStateDisabled];
+    [self.resetButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    
     [self.view addSubview:self.startButton];
+    [self.view addSubview:self.resetButton];
+
     
 
 
@@ -167,6 +181,8 @@
     self.zoomInButton.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomInButton.frame) / 2 - 20, CGRectGetMaxY(self.zoomLabel.frame) + 20);
     // 设置按钮圆角为2
     self.zoomInButton.layer.cornerRadius = 2.0;
+    
+    UIColor *customBlueColor = [UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0];
 
     [self.zoomInButton setBackgroundColor:customBlueColor];
 
@@ -231,6 +247,7 @@
 - (void)startTakingPhotos
 {
     
+    self.filenameTextField.userInteractionEnabled = NO;
     // 创建一个串行队列
     dispatch_queue_t queue = dispatch_queue_create("com.example.photoqueue", NULL);
     
@@ -252,8 +269,16 @@
 
     // 启动定时器
     dispatch_resume(self.timer);
+    
+    [self.startButton setTitle:@"拍摄中" forState:UIControlStateNormal];
+    self.resetButton.enabled = self.startButton.enabled = NO;
+    [self.startButton setBackgroundColor:[UIColor lightGrayColor]];
+    [self.resetButton setBackgroundColor:[UIColor lightGrayColor]];
 
 }
+
+
+
 
 // 拍照
 - (void)takePhoto {
@@ -266,8 +291,12 @@
         self.timer = nil;
         [self.captureSession stopRunning];
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self.startButton setTitle:@"完成" forState:UIControlStateNormal];
-            self.startButton.enabled = NO;
+        [self.startButton setTitle:@"完成" forState:UIControlStateNormal];
+        self.startButton.enabled = NO;
+        [self.startButton setBackgroundColor:[UIColor lightGrayColor]];
+        self.resetButton.enabled = YES;
+        [self.resetButton setBackgroundColor:[UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0]];
+
         });
         
         return;
@@ -283,9 +312,32 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         CGFloat progress = (CGFloat)self.photoCount / 36.0;
         [self.progressView setProgress:progress animated:YES];
-        [self.startButton setTitle:@"拍摄中" forState:UIControlStateNormal];
-        self.startButton.enabled = NO;
     });
+
+}
+
+
+- (void)startReset
+{
+    
+    self.photoCount = 0;
+    
+    self.filenameTextField.text = @"";
+    
+    self.progressView.progress = 0.0;
+    
+    self.resetButton.enabled = self.startButton.enabled = NO;
+    
+    [self.startButton setBackgroundColor:[UIColor lightGrayColor]];
+    
+    [self.resetButton setBackgroundColor:[UIColor lightGrayColor]];
+    
+    [self.startButton setTitle:@"开始" forState:UIControlStateNormal];
+
+    self.filenameTextField.userInteractionEnabled = YES;
+    
+    [self.captureSession startRunning];
+
 
 }
 
@@ -339,7 +391,6 @@
 }
 
 - (void)updateZoom {
-    
 
     // 限制缩放因子在有效范围内
     self.currentZoomFactor = MAX(1.0, MIN(self.currentZoomFactor, self.captureDevice.activeFormat.videoMaxZoomFactor));
@@ -395,27 +446,50 @@
   });
 }
 
-- (void)textFieldDidEndEditing:(UITextField *)textField{
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
     self.filenameText = textField.text;
-        
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
     // 允许的字符集（英文和数字）
+    
+    NSMutableString * changedString=[[NSMutableString alloc]initWithString:textField.text];
+
+    [changedString replaceCharactersInRange:range withString:string];
+
+    
+    if (changedString.length>9 ) {
+
+        [self.startButton setBackgroundColor:[UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0] ];
+        self.startButton.enabled=YES;
+               
+    }else{
+
+        // filenameTextField 不为空
+        [self.startButton setBackgroundColor:[UIColor lightGrayColor]];
+        [self.resetButton setBackgroundColor:[UIColor lightGrayColor]];
+
+        self.resetButton.enabled=self.startButton.enabled=NO;
+    }
+    
     NSCharacterSet *allowedCharacters = [[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"] invertedSet];
     
     // 检查新输入的字符是否在允许的字符集内
     NSRange characterRange = [string rangeOfCharacterFromSet:allowedCharacters];
     
-    if (characterRange.location != NSNotFound) {
+    if (characterRange.location != NSNotFound || changedString.length > 10) {
         // 输入字符不在允许的字符集内，拒绝输入
         return NO;
+        
     } else {
-        // 将字母字符转为大写
         textField.text = [textField.text stringByReplacingCharactersInRange:range withString:[string uppercaseString]];
+        
         return NO; // 返回NO，表示不允许textField处理输入
     }
-} 
+    
+}
+
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
