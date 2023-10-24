@@ -26,7 +26,6 @@
 @property (nonatomic, strong) UILabel *zoomLabel;
 @property (nonatomic, strong) UIButton *zoomInButton;
 @property (nonatomic, strong) UIButton *zoomOutButton;
-@property (nonatomic, strong) UILabel *exposureLabel;
 
 @end
 
