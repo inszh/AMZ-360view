@@ -26,7 +26,7 @@
 @property (nonatomic, strong) UILabel *zoomLabel;
 @property (nonatomic, strong) UIButton *zoomInButton;
 @property (nonatomic, strong) UIButton *zoomOutButton;
-
+@property (nonatomic, strong) UILabel *exposureLabel;
 
 @end
 
@@ -154,6 +154,7 @@
     self.zoomLabel.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomLabel.frame) / 2 - 20, CGRectGetHeight(self.view.frame) / 2);
     [self.view addSubview:self.zoomLabel];
     
+    
     // 创建缩放放大按钮
     self.zoomInButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.zoomInButton setTitle:@"放大" forState:UIControlStateNormal];
@@ -193,6 +194,27 @@
     [self.view addSubview:self.zoomOutButton];
     
     
+    // 创建增加曝光按钮
+    UIButton *increaseExposureButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    increaseExposureButton.frame = CGRectMake(0, 0, buttonWidth, 30);
+    increaseExposureButton.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomOutButton.frame) / 2 - 20, CGRectGetMaxY(self.zoomOutButton.frame) + 20);
+    [increaseExposureButton setBackgroundColor:[UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0]];
+    [increaseExposureButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [increaseExposureButton setTitle:@"增曝" forState:UIControlStateNormal];
+    [increaseExposureButton addTarget:self action:@selector(increaseExposure) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:increaseExposureButton];
+
+    // 创建减小曝光按钮
+    UIButton *decreaseExposureButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    decreaseExposureButton.frame = CGRectMake(0, 0, buttonWidth, 30);
+    decreaseExposureButton.center = CGPointMake(CGRectGetWidth(self.view.frame) - CGRectGetWidth(self.zoomOutButton.frame) / 2 - 20, CGRectGetMaxY(increaseExposureButton.frame) + 20);
+    [decreaseExposureButton setBackgroundColor:[UIColor colorWithRed:85/255.0 green:150/255.0 blue:243/255.0 alpha:1.0]];
+    [decreaseExposureButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [decreaseExposureButton setTitle:@"减曝" forState:UIControlStateNormal];
+    [decreaseExposureButton addTarget:self action:@selector(decreaseExposure) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:decreaseExposureButton];
+    
+    
     // 初始化当前缩放级别
     self.currentZoomFactor = 1.0;
     
@@ -202,7 +224,7 @@
         self.captureDevice.videoZoomFactor = self.currentZoomFactor;
         [self.captureDevice unlockForConfiguration];
     }
-        
+            
 }
 
 
@@ -330,6 +352,31 @@
     self.zoomLabel.text = [NSString stringWithFormat:@"%.1fx", self.currentZoomFactor];
 
 }
+
+
+- (void)increaseExposure {
+    [self adjustExposureWithBias:0.5]; // 增加曝光
+}
+
+- (void)decreaseExposure {
+    [self adjustExposureWithBias:-0.5]; // 减小曝光
+}
+
+- (void)adjustExposureWithBias:(float)bias {
+    NSError *error = nil;
+       
+    if ([self.captureDevice lockForConfiguration:&error]) {
+            float currentBias = self.captureDevice.exposureTargetBias;
+            float newBias = currentBias + bias;
+            // 设置曝光目标偏差
+            [self.captureDevice setExposureTargetBias:newBias completionHandler:nil];
+        [self.captureDevice unlockForConfiguration];
+        
+    } else {
+        NSLog(@"无法锁定设备配置：%@", error.localizedDescription);
+    }
+}
+
 
 
 
